@@ -1,0 +1,987 @@
+ # SQL Injection Introduction
+
+**Platform:** TryHackMe  
+**Learning Path:** Jr Penetration Tester  
+**Room:** SQL Injection Introduction  
+**Date Completed:** August 28, 2026  
+**Difficulty:** Easy  
+**Category:** Web Application Security / SQL Injection  
+**Room Type:** Mixed — Reading + Hands-on
+
+---
+
+# Objective
+
+The objective of this room was to become familiar with SQL injection, understand how SQL queries and syntax work, and learn how user-controlled input can manipulate vulnerable SQL queries.
+
+The room also introduced different SQL injection techniques and demonstrated how SQL syntax can be used during authorized web application security testing to enumerate database information and understand how vulnerable applications interact with their databases.
+
+---
+
+# Why SQL Injection Matters
+
+Web applications frequently interact with databases to store and retrieve information.
+
+This can include:
+
+- User accounts
+- Password-related information
+- Products
+- Orders
+- Application data
+- Administrative information
+
+If user-controlled input is handled insecurely before being included in a SQL query, an attacker may be able to change the intended behavior of that query.
+
+```text
+User Input
+    |
+    v
+Web Application
+    |
+    v
+SQL Query
+    |
+    v
+Database
+    |
+    v
+Results
+```
+
+In a vulnerable application:
+
+```text
+Attacker-Controlled Input
+          |
+          v
+Vulnerable Application
+          |
+          v
+SQL Query Is Altered
+          |
+          v
+Database Executes Modified Query
+          |
+          v
+Unintended Results
+```
+
+This can potentially expose sensitive information or cause other unintended database actions.
+
+---
+
+# SQL Fundamentals
+
+## What is SQL?
+
+SQL stands for **Structured Query Language**.
+
+SQL is used to interact with and manage relational databases.
+
+Applications can use SQL to:
+
+- Retrieve information
+- Add information
+- Modify information
+- Delete information
+- Search for specific records
+
+Understanding normal SQL behavior makes it easier to understand how SQL injection changes the intended behavior of a query.
+
+---
+
+# Databases
+
+A database stores organized information that applications can retrieve and manage.
+
+A web application may use a database to store information such as:
+
+```text
+Database
+   |
+   +-- Users
+   |
+   +-- Products
+   |
+   +-- Orders
+   |
+   +-- Application Data
+```
+
+Relational databases commonly organize information into tables containing rows and columns.
+
+```text
+Database
+   |
+   v
+Tables
+   |
+   v
+Columns
+   |
+   v
+Records / Data
+```
+
+Understanding this structure is important when performing database enumeration during an authorized SQL injection test.
+
+---
+
+# Basic SQL Syntax
+
+## SELECT
+
+`SELECT` specifies what information should be returned.
+
+```sql
+SELECT username
+```
+
+A useful way to remember it is:
+
+```text
+SELECT = What data do I want?
+```
+
+---
+
+## FROM
+
+`FROM` identifies which table the information should come from.
+
+```sql
+FROM users
+```
+
+Think:
+
+```text
+FROM = What table does the data come from?
+```
+
+---
+
+## WHERE
+
+`WHERE` specifies a condition that determines which records should match.
+
+```sql
+WHERE username = 'Brandon'
+```
+
+Think:
+
+```text
+WHERE = Which records meet my condition?
+```
+
+---
+
+# Putting SELECT, FROM, and WHERE Together
+
+A query could conceptually look like:
+
+```sql
+SELECT username
+FROM users
+WHERE username = 'Brandon';
+```
+
+This can be read as:
+
+```text
+SELECT
+What information?
+        |
+        v
+username
+
+FROM
+What table?
+        |
+        v
+users
+
+WHERE
+Which records?
+        |
+        v
+username = Brandon
+```
+
+---
+
+# UNION
+
+`UNION` combines the results returned by compatible `SELECT` queries into a single result set.
+
+Conceptually:
+
+```text
+SELECT Query 1
+      |
+      +------+
+             |
+             v
+       Combined Results
+             ^
+             |
+      +------+
+      |
+SELECT Query 2
+```
+
+Understanding `UNION` is important because UNION-Based SQL injection may allow additional query results to appear alongside the application's original results.
+
+---
+
+# What is SQL Injection?
+
+SQL injection is a web application vulnerability that occurs when user-controlled input is handled insecurely and changes the intended structure or behavior of a SQL query.
+
+The basic process can be understood as:
+
+```text
+User-Controlled Input
+        |
+        v
+HTTP Request
+        |
+        v
+Web Application
+        |
+        v
+Vulnerable SQL Query
+        |
+        v
+Database
+        |
+        v
+Result / Error / Behavior Change
+        |
+        v
+HTTP Response
+```
+
+SQL injection is not simply about entering special syntax.
+
+The important concept is that the supplied input affects how the database interprets the application's intended SQL query.
+
+---
+
+# Types of SQL Injection
+
+The room introduced several major SQL injection categories and techniques.
+
+```text
+SQL Injection
+     |
+     +-- In-Band
+     |
+     +-- Blind
+     |
+     `-- Out-of-Band
+```
+
+---
+
+# In-Band SQL Injection
+
+In-Band SQL injection occurs when the injection and resulting information are communicated through the same channel.
+
+For example, input may be supplied through the web application and useful results may appear directly within the application's HTTP response.
+
+```text
+Injection
+    |
+    v
+Web Application
+    |
+    v
+Database
+    |
+    v
+Results
+    |
+    v
+Web Application Response
+```
+
+Two important In-Band techniques include:
+
+- Error-Based SQL Injection
+- UNION-Based SQL Injection
+
+---
+
+# Error-Based SQL Injection
+
+Error-Based SQL injection takes advantage of database errors exposed by a vulnerable application.
+
+These errors can provide useful clues about how the application and database are processing the supplied input.
+
+```text
+Injected Input
+      |
+      v
+Database Encounters Error
+      |
+      v
+Application Exposes Error
+      |
+      v
+Tester Analyzes Information
+```
+
+An important lesson from this room was that an error does not simply provide the tester with the "correct injection."
+
+Instead, the error provides information or clues that must be analyzed.
+
+---
+
+# UNION-Based SQL Injection
+
+UNION-Based SQL injection uses the SQL `UNION` operator to combine the results of an injected `SELECT` query with the application's original query.
+
+Conceptually:
+
+```text
+Original SELECT
+       |
+       +------+
+              |
+              v
+        Combined Results
+              ^
+              |
+       +------+
+       |
+Injected SELECT
+```
+
+If the queries are compatible and the application's database account has permission to access the requested information, additional database information may appear within the application's response.
+
+---
+
+# Blind SQL Injection
+
+Blind SQL injection occurs when the results of the injected SQL query are not directly displayed by the application.
+
+Instead, information must be inferred by observing changes in the application's behavior.
+
+```text
+Injected Condition
+       |
+       v
+Database Evaluates Condition
+       |
+       v
+    True / False
+       |
+       v
+Application Behavior Changes
+       |
+       v
+Tester Infers Result
+```
+
+Changes could include:
+
+- Page content
+- Application behavior
+- HTTP response behavior
+- Response timing
+
+Blind SQL injection interested me the most because it requires paying attention to small differences rather than simply reading database results directly from the page.
+
+---
+
+# Boolean-Based Blind SQL Injection
+
+Boolean-Based Blind SQL injection uses conditions that evaluate as either true or false.
+
+```text
+Condition
+    |
+    +-- TRUE  ---> Application behaves one way
+    |
+    `-- FALSE ---> Application behaves differently
+```
+
+By comparing the application's behavior, information can potentially be inferred even though the database results are not directly displayed.
+
+---
+
+# Time-Based Blind SQL Injection
+
+Time-Based Blind SQL injection uses response timing as an observable difference.
+
+Conceptually:
+
+```text
+Injected Condition
+        |
+        v
+Condition Evaluated
+        |
+        v
+Delay Triggered
+        |
+        v
+HTTP Response Takes Longer
+        |
+        v
+Tester Observes Timing Difference
+```
+
+A simple way to remember the distinction is:
+
+```text
+Boolean-Based
+→ Observe application behavior/content differences
+
+Time-Based
+→ Observe response-time differences
+```
+
+---
+
+# Out-of-Band SQL Injection
+
+Out-of-Band SQL injection involves obtaining information through a different communication channel rather than receiving the needed information directly through the normal application response.
+
+The important distinction is:
+
+```text
+In-Band
+→ Results through same channel
+
+Blind
+→ Infer results from behavior
+
+Out-of-Band
+→ Information through another channel
+```
+
+Out-of-Band does not simply mean "use it when everything else fails." The defining characteristic is the separate communication channel.
+
+---
+
+# Database Enumeration
+
+During the hands-on exercises, I used SQL injection to enumerate information from the vulnerable application's database.
+
+My general methodology was:
+
+```text
+Identify SQL Injection
+        |
+        v
+Discover Database Information
+        |
+        v
+Identify Tables
+        |
+        v
+Identify Columns
+        |
+        v
+Retrieve Relevant Data
+        |
+        v
+Analyze Results
+```
+
+This helped me understand that discovering a SQL injection vulnerability is only the beginning.
+
+The tester must understand the database structure and determine what information is accessible.
+
+---
+
+# Hands-On Walkthrough
+
+During the hands-on exercises, I mainly performed SQL injection testing by modifying input within the URL.
+
+```text
+URL Input
+    |
+    v
+HTTP Request
+    |
+    v
+Web Application
+    |
+    v
+SQL Query
+    |
+    v
+Database
+```
+
+I observed how different inputs changed the application's responses.
+
+After identifying that SQL injection was possible, I worked through the database structure.
+
+```text
+Database Information
+        |
+        v
+Tables
+        |
+        v
+Columns
+        |
+        v
+Useful Data
+```
+
+During the lab, I was able to retrieve information including usernames, passwords, and administrator account information from the vulnerable database.
+
+I then used the appropriate retrieved lab credentials to authenticate to the web application.
+
+No actual credentials or flags are included in this public write-up.
+
+---
+
+# Analyzing Application Responses
+
+An important part of SQL injection testing was paying attention to how the application responded to different inputs.
+
+```text
+Modified URL Input
+        |
+        v
+HTTP Request
+        |
+        v
+Web Application
+        |
+        v
+Database
+        |
+        v
+Result / Error
+        |
+        v
+HTTP Response
+        |
+        v
+Browser
+```
+
+During In-Band testing, useful information could sometimes appear directly within the page.
+
+During Error-Based testing, database errors provided clues about how the application was processing the supplied input.
+
+During Blind testing, the response required more analysis because the database results were not directly displayed.
+
+---
+
+# Networking Concepts
+
+SQL injection occurs at the application layer, but it still relies on the underlying network communication between the client and web server.
+
+A simplified flow is:
+
+```text
+Browser
+   |
+   v
+HTTP / HTTPS
+   |
+   v
+Web Server
+   |
+   v
+Web Application
+   |
+   v
+SQL Query
+   |
+   v
+Database
+```
+
+The user-controlled input travels within an HTTP request to the web application.
+
+The application then interacts with the database.
+
+The resulting database information, errors, or application behavior may affect the HTTP response returned to the client.
+
+---
+
+# HTTP and HTTPS
+
+HTTP and HTTPS are application-layer protocols used for communication between web clients and web servers.
+
+Common ports include:
+
+```text
+HTTP  → TCP Port 80
+HTTPS → TCP Port 443
+```
+
+SQL injection targets how the web application handles input used within database queries.
+
+HTTPS can protect network traffic while it is in transit, but encryption does not fix insecure SQL query construction inside the application.
+
+---
+
+# Security Impact
+
+SQL injection can have a serious security impact because it may allow unauthorized access to information stored within a database.
+
+This directly affects **confidentiality**.
+
+```text
+SQL Injection
+      |
+      v
+Unauthorized Database Access
+      |
+      v
+Sensitive Information Exposed
+      |
+      v
+Loss of Confidentiality
+```
+
+Depending on the vulnerability and the permissions available to the application's database account, SQL injection may also potentially affect the integrity of information if unauthorized modifications are possible.
+
+This demonstrates why database permissions are important when considering the overall impact of a vulnerability.
+
+---
+
+# SQL Injection Prevention
+
+The room introduced several defensive concepts for reducing SQL injection risk.
+
+These included:
+
+- Secure handling of user input
+- Input validation
+- Appropriate escaping
+- Least privilege
+- Web Application Firewalls as an additional defensive layer
+
+---
+
+## Least Privilege
+
+The application's database account should only have the permissions necessary to perform its intended function.
+
+```text
+SQL Injection
+      |
+      v
+Application Database Account
+      |
+      v
+Available Permissions
+      |
+      v
+Potential Impact
+```
+
+If the database account has excessive permissions, the potential impact of SQL injection may become greater.
+
+Least privilege helps limit what information and actions are available to a compromised application account.
+
+---
+
+## Web Application Firewall
+
+A Web Application Firewall can provide an additional defensive layer by identifying or blocking certain suspicious web requests.
+
+However, a WAF should not be treated as the fundamental solution for insecure SQL query construction.
+
+Secure application development and proper database access controls remain important.
+
+---
+
+# Limitations and Challenges
+
+The most challenging part of this room was remembering the different SQL syntax and queries used during the exercises.
+
+I understood the overall methodology:
+
+```text
+Database
+   |
+   v
+Tables
+   |
+   v
+Columns
+   |
+   v
+Data
+```
+
+However, remembering the exact syntax used for each step was more difficult.
+
+Continued practice with SQL and future SQL injection labs will help reinforce the syntax.
+
+Another important limitation during SQL injection testing is that different applications may respond differently.
+
+A technique that provides useful results against one vulnerable application may not produce the same behavior against another.
+
+The tester must analyze the application's responses and determine what technique is appropriate for the situation.
+
+---
+
+# What I Learned
+
+The biggest lesson I learned from this room was the importance of reviewing and implementing secure development practices.
+
+SQL injection demonstrated how improperly handled user input can affect database queries and potentially expose sensitive information.
+
+I also learned that understanding SQL itself is important before trying to understand SQL injection.
+
+Knowing how databases, tables, columns, and queries normally work makes it easier to understand what happens when user-controlled input changes the intended query.
+
+---
+
+# Real-World Application
+
+During an authorized web application penetration test, SQL injection testing may involve:
+
+```text
+Identify User-Controlled Input
+        |
+        v
+Test Application Behavior
+        |
+        v
+Identify Possible SQL Injection
+        |
+        v
+Determine SQLi Technique
+        |
+        v
+Analyze Responses
+        |
+        v
+Enumerate Accessible Database Information
+        |
+        v
+Determine Security Impact
+        |
+        v
+Document Findings
+```
+
+Understanding different SQL injection techniques is important because applications may expose information in different ways.
+
+If results are not displayed directly, other techniques may require analyzing errors, page behavior, or timing differences.
+
+---
+
+# Interview Notes
+
+## What is SQL?
+
+SQL stands for Structured Query Language and is used to interact with and manage relational databases.
+
+---
+
+## What is SQL injection?
+
+SQL injection is a vulnerability that occurs when user-controlled input is handled insecurely and alters the intended structure or behavior of a SQL query.
+
+---
+
+## What does SELECT do?
+
+`SELECT` specifies what information should be returned from the database.
+
+---
+
+## What does FROM do?
+
+`FROM` specifies which table the requested information should come from.
+
+---
+
+## What does WHERE do?
+
+`WHERE` specifies conditions that determine which records should match the query.
+
+---
+
+## What does UNION do?
+
+`UNION` combines the results of compatible `SELECT` queries into a single result set.
+
+---
+
+## What is In-Band SQL injection?
+
+In-Band SQL injection uses the same communication channel to perform the injection and receive useful results.
+
+---
+
+## What is Error-Based SQL injection?
+
+Error-Based SQL injection uses database errors exposed by a vulnerable application to obtain useful information or clues about the underlying query or database.
+
+---
+
+## What is UNION-Based SQL injection?
+
+UNION-Based SQL injection uses the SQL `UNION` operator to combine results from an injected `SELECT` query with the application's original query.
+
+---
+
+## What is Blind SQL injection?
+
+Blind SQL injection occurs when database query results are not directly displayed.
+
+Instead, the tester infers information by observing changes in application behavior.
+
+---
+
+## What is Boolean-Based Blind SQL injection?
+
+Boolean-Based Blind SQL injection uses true or false conditions and compares application behavior to infer information.
+
+---
+
+## What is Time-Based Blind SQL injection?
+
+Time-Based Blind SQL injection uses differences in response timing to infer whether an injected condition evaluated as expected.
+
+---
+
+## What is Out-of-Band SQL injection?
+
+Out-of-Band SQL injection uses a separate communication channel to obtain information rather than returning the needed information through the application's normal response.
+
+---
+
+## Why is SQL injection dangerous?
+
+SQL injection may expose sensitive database information to unauthorized users.
+
+Depending on database permissions and the vulnerability, it may also affect the integrity of stored information.
+
+---
+
+## How can SQL injection risk be reduced?
+
+SQL injection risk can be reduced through secure handling of user input, appropriate query construction and input controls, least-privilege database permissions, and additional defensive controls such as a WAF.
+
+---
+
+# Key Takeaway
+
+SQL injection is not simply about memorizing injection strings.
+
+Understanding the complete process is more important:
+
+```text
+How does SQL normally work?
+        |
+        v
+How does the application use the database?
+        |
+        v
+Where does user input enter the application?
+        |
+        v
+Can that input alter the SQL query?
+        |
+        v
+How does the application respond?
+        |
+        v
+What can I learn from that response?
+        |
+        v
+What is the security impact?
+```
+
+Understanding the database structure, SQL syntax, application behavior, and different SQL injection techniques makes it easier to recognize and investigate SQL injection vulnerabilities during authorized security testing.
+
+---
+
+# Skills Developed
+
+- SQL Fundamentals
+- SQL Injection Fundamentals
+- Web Application Security
+- Database Fundamentals
+- Database Enumeration
+- SQL Query Analysis
+- SELECT Statements
+- FROM Clauses
+- WHERE Clauses
+- UNION Fundamentals
+- In-Band SQL Injection
+- Error-Based SQL Injection
+- UNION-Based SQL Injection
+- Blind SQL Injection
+- Boolean-Based Blind SQL Injection
+- Time-Based Blind SQL Injection
+- Out-of-Band SQL Injection
+- HTTP Request Analysis
+- Web Application Response Analysis
+- URL Parameter Testing
+- Database Security
+- Least Privilege
+- Web Application Penetration Testing
+- Vulnerability Impact Analysis
+
+---
+
+# Screenshots
+
+Useful screenshots from this room could include:
+
+- Vulnerable URL parameter being tested
+- Application response after modified input
+- Error-Based SQL injection response
+- UNION-Based SQL injection results
+- Database enumeration results
+- Table or column enumeration
+- Blind SQL injection response differences
+- Successful lab authentication after database enumeration
+
+Any flags, passwords, usernames, administrator credentials, or other sensitive lab answers should be redacted before screenshots are uploaded to a public GitHub repository.
+
+---
+
+# Personal Reflection
+
+## Biggest Lesson Learned
+
+The biggest lesson I learned from this room was the importance of reviewing and implementing secure development practices.
+
+SQL injection demonstrated how improperly handled user input can affect database queries and potentially expose sensitive information, showing why applications need strong protections against this type of vulnerability.
+
+---
+
+## Why Understanding SQL and Databases Matters
+
+Understanding SQL and database structure is important because it helps me understand how applications normally retrieve and manage information.
+
+Becoming familiar with SQL queries, tables, columns, and databases makes it easier to understand what is happening when SQL injection changes the intended behavior of a query.
+
+---
+
+## Most Interesting Concept
+
+Blind SQL injection interested me the most because the application does not directly display the results of the injected query.
+
+Instead, I have to pay attention to changes in the application's behavior and responses to determine whether the injected condition worked.
+
+I found this interesting because it requires more analysis than simply seeing the requested information displayed on the page.
+
+---
+
+## Future Penetration Tests
+
+This room will help me during future web application penetration tests because it introduced me to the methodology behind testing for SQL injection and the different techniques that may be used depending on how the application responds.
+
+I am also becoming more familiar with SQL syntax and database enumeration, so when I encounter SQL injection again, I will already understand the general process and know that different approaches may be needed when one technique does not provide useful results. 
